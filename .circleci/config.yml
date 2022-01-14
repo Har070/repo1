@@ -1,107 +1,88 @@
-# PHP CircleCI 2.0 configuration file
-# See: https://circleci.com/docs/2.0/language-php/
-version: 2.1
-orbs:
-  jira:circleci/jira@1.
-
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
   build:
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
-      # Specify the version you desire here
-      - image: circleci/php:7.1-node-browsers
-    workin_directory: ~/repo
-          steps:
-            - checkout
-
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # Using the RAM variation mitigates I/O contention
-      # for database intensive operations.
-      # - image: circleci/mysql:5.7-ram
-      #
-      # - image: redis:2.8.19
-
-    # Add steps to the job
-    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
+      - image: 'circleci/node:10'
+    steps:
+      - run: echo "hello"
+orbs:
+  jira: circleci/jira@x.y.z
+version: 2.1
+workflows:
+  build:
+    jobs:
+      - build:
+          post-steps:
+            - jira/notify
+jobs:
+  component-A:
+    docker:
+      - image: 'circleci/node:10'
     steps:
       - checkout
-
-      - run: sudo apt update # PHP CircleCI 2.0 Configuration File# PHP CircleCI 2.0 Configuration File sudo apt install zlib1g-dev libsqlite3-dev
-      - run: sudo docker-php-ext-install zip
-      - run: echo "hi Testttt"
+      - run: exit 0
       - jira/notify
-
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-            # "composer.lock" can be used if it is committed to the repo
-            - v1-dependencies-{{ checksum "composer.json" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
-
-      - run: composer install -n --prefer-dist
-
-      - save_cache:
-          key: v1-dependencies-{{ checksum "composer.json" }}
-          paths:
-            - ./vendor
-      - restore_cache:
-          keys:
-            - node-v1-{{ checksum "package.json" }}
-            - node-v1-
-      - run: yarn install
-      - save_cache:
-          key: node-v1-{{ checksum "package.json" }}
-          paths:
-            - node_modules
-
-      # prepare the database
-      - run: touch storage/testing.sqlite
-      - run: php artisan migrate --env=testing --database=sqlite_testing --force
-
-      # run tests with phpunit or codecept
-      #- run: ./vendor/bin/phpunit
-      - run: ./vendor/bin/codecept build
-      - run: ./vendor/bin/codecept run
-    deploy:
-      parameters:
-        environment-type:
-          type: string
-          default: development
-      docker:
-        - image: circleci/php:7.1-node-browsers
-      workin_directory: ~/repo
-      steps:
-        - checkout
-        - run: echo "hi Deploy Testtt"
-        - jira/notify:
-            job_type: deployment
-            environment_type: <<parameters.environment-type>>
-#  jobs:
-#    build-job:
-#      docker:
-#        -image: circleci/node:10
-#        workin_directory: ~/repo
-#        steps:
-#          - checkout
-#          - run: echo "hi Testttt"
-#          - jira/notify
-#        deploy:
-#          parameters:
-#            environment-type:
-#              type: string
-#              default: development
-#          docker:
-#            - image: circleci/node:10
-#          workin_directory: ~/repo
-#          steps:
-#            - checkout
-#            - run: echo "hi Deploy Testtt"
-#            - jira/notify:
-#                job_type: deployment
-#                environment_type: <<parameters.environment-type>>
+    working_directory: ~/repo
+  component-B:
+    docker:
+      - image: 'circleci/node:10'
+    steps:
+      - checkout
+      - run: sleep 2
+      - jira/notify
+    working_directory: ~/repo
+  deploy:
+    docker:
+      - image: 'circleci/node:10'
+    steps:
+      - checkout
+      - run: echo "hi Jira"
+    working_directory: ~/repo
+  integration:
+    docker:
+      - image: 'circleci/node:10'
+    steps:
+      - checkout
+      - run: echo "hi Jira"
+      - jira/notify
+    working_directory: ~/repo
+orbs:
+  jira: circleci/jira@x.y.z
+version: 2.1
+workflows:
+  build-deploy:
+    jobs:
+      - component-A
+      - component-B
+      - integration:
+          requires:
+            - component-A
+            - component-B
+      - deploy:
+          name: Dev East
+          post-steps:
+            - jira/notify:
+                environment_type: development
+                job_type: deployment
+          requires:
+            - integration
+      - deploy:
+          name: Test East
+          post-steps:
+            - jira/notify:
+                environment_type: testing
+                job_type: deployment
+          requires:
+            - Dev East
+      - hold:
+          name: Verify
+          requires:
+            - Test East
+          type: approval
+      - deploy:
+          name: Prod East
+          post-steps:
+            - jira/notify:
+                environment_type: production
+                job_type: deployment
+          requires:
+            - Verify
