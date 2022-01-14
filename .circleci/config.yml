@@ -13,6 +13,9 @@ jobs:
     docker:
       # Specify the version you desire here
       - image: circleci/php:7.1-node-browsers
+    workin_directory: ~/repo
+          steps:
+            - checkout
 
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
@@ -30,6 +33,8 @@ jobs:
 
       - run: sudo apt update # PHP CircleCI 2.0 Configuration File# PHP CircleCI 2.0 Configuration File sudo apt install zlib1g-dev libsqlite3-dev
       - run: sudo docker-php-ext-install zip
+      - run: echo "hi Testttt"
+      - jira/notify
 
       # Download and cache dependencies
       - restore_cache:
@@ -63,26 +68,40 @@ jobs:
       #- run: ./vendor/bin/phpunit
       - run: ./vendor/bin/codecept build
       - run: ./vendor/bin/codecept run
-  jobs:
-    build-job:
+    deploy:
+      parameters:
+        environment-type:
+          type: string
+          default: development
       docker:
-        -image: circleci/node:10
-        workin_directory: ~/repo
-        steps:
-          - checkout
-          - run: echo "hi Testttt"
-          - jira/notify
-        deploy:
-          parameters:
-            environment-type:
-              type: string
-              default: development
-          docker:
-            - image: circleci/node:10
-          workin_directory: ~/repo
-          steps:
-            - checkout
-            - run: echo "hi Deploy Testtt"
-            - jira/notify:
-                job_type: deployment
-                environment_type: <<parameters.environment-type>>
+        - image: circleci/php:7.1-node-browsers
+      workin_directory: ~/repo
+      steps:
+        - checkout
+        - run: echo "hi Deploy Testtt"
+        - jira/notify:
+            job_type: deployment
+            environment_type: <<parameters.environment-type>>
+#  jobs:
+#    build-job:
+#      docker:
+#        -image: circleci/node:10
+#        workin_directory: ~/repo
+#        steps:
+#          - checkout
+#          - run: echo "hi Testttt"
+#          - jira/notify
+#        deploy:
+#          parameters:
+#            environment-type:
+#              type: string
+#              default: development
+#          docker:
+#            - image: circleci/node:10
+#          workin_directory: ~/repo
+#          steps:
+#            - checkout
+#            - run: echo "hi Deploy Testtt"
+#            - jira/notify:
+#                job_type: deployment
+#                environment_type: <<parameters.environment-type>>
