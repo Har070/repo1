@@ -1,6 +1,8 @@
 # PHP CircleCI 2.0 configuration file
 # See: https://circleci.com/docs/2.0/language-php/
 version: 2
+orbs:
+  jira:circleci/jira@1.
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -61,3 +63,26 @@ jobs:
       #- run: ./vendor/bin/phpunit
       - run: ./vendor/bin/codecept build
       - run: ./vendor/bin/codecept run
+  jobs:
+    build-job:
+      docker:
+        -image: circleci/node:10
+        workin_directory: ~/repo
+        steps:
+          - checkout
+          - run: echo "hi Testttt"
+          - jira/notify
+        deploy:
+          parameters:
+            environment-type:
+              type: string
+              default: development
+          docker:
+            - image: circleci/node:10
+          workin_directory: ~/repo
+          steps:
+            - checkout
+            - run: echo "hi Deploy Testtt"
+            - jira/notify:
+                job_type: deployment
+                environment_type: <<parameters.environment-type>>
